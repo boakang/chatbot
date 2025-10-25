@@ -1,17 +1,37 @@
-from database import DatabaseHelper
+import pyodbc
 
-db = DatabaseHelper()
+server = "schema-sql.database.windows.net"
+database = "tickets"
+username = "thbao"
+password = "AnhiuTH@1307"
 
-# Test admin key
-print("Testing admin key...")
-result = db.verify_admin_key("123222")
-print(f"Admin key valid: {result}")
+connection_string = (
+    f"Driver={{ODBC Driver 18 for SQL Server}};"
+    f"Server=tcp:{server},1433;"
+    f"Database={database};"
+    f"Uid={username};"
+    f"Pwd={password};"
+    f"Encrypt=yes;"
+    f"TrustServerCertificate=yes;"
+    f"Connection Timeout=60;"
+)
 
-# Test get pending tickets
-print("\nGetting pending tickets...")
-tickets = db.get_pending_tickets()
-print(f"Found {len(tickets)} pending tickets")
-for ticket in tickets:
-    print(f"  - Ticket #{ticket['ticket_id']}: {ticket['content']}")
+print("Testing database connection...")
+print(f"Server: {server}")
+print(f"Database: {database}")
+print("-" * 50)
 
-print("\n✅ Database connection successful!")
+try:
+    conn = pyodbc.connect(connection_string)
+    print("✅ Connection successful!")
+    
+    cursor = conn.cursor()
+    cursor.execute("SELECT COUNT(*) FROM AdminKeys")
+    count = cursor.fetchone()[0]
+    print(f"✅ Found {count} admin keys in database")
+    
+    conn.close()
+    print("✅ Database ready!")
+    
+except Exception as e:
+    print(f"❌ Connection failed: {e}")
