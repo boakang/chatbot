@@ -1,37 +1,29 @@
-import pyodbc
+from database import DatabaseHelper
 
-server = "schema-sql.database.windows.net"
-database = "tickets"
-username = "thbao"
-password = "AnhiuTH@1307"
-
-connection_string = (
-    f"Driver={{ODBC Driver 18 for SQL Server}};"
-    f"Server=tcp:{server},1433;"
-    f"Database={database};"
-    f"Uid={username};"
-    f"Pwd={password};"
-    f"Encrypt=yes;"
-    f"TrustServerCertificate=yes;"
-    f"Connection Timeout=60;"
-)
-
-print("Testing database connection...")
-print(f"Server: {server}")
-print(f"Database: {database}")
+print("Testing database connection to Iowa Liquor Sales 2022...")
+db = DatabaseHelper()
+print(f"Connection String being used: {db.connection_string}")
 print("-" * 50)
 
 try:
-    conn = pyodbc.connect(connection_string)
+    conn = db.get_connection()
     print("✅ Connection successful!")
     
     cursor = conn.cursor()
-    cursor.execute("SELECT COUNT(*) FROM AdminKeys")
+    # Test 1: Count records in the table
+    cursor.execute("SELECT COUNT(*) FROM dbo.Iowa_Liquor_Sales2022")
     count = cursor.fetchone()[0]
-    print(f"✅ Found {count} admin keys in database")
+    print(f"✅ Found {count:,} sales records in dbo.Iowa_Liquor_Sales2022")
+    
+    # Test 2: Peek at the first 3 records
+    print("\n🔍 First 3 records:")
+    cursor.execute("SELECT TOP 3 store_name, city, sale_dollars FROM dbo.Iowa_Liquor_Sales2022")
+    for row in cursor.fetchall():
+        print(f" - Store: {row[0]}, City: {row[1]}, Sale: ${row[2]:,.2f}")
     
     conn.close()
-    print("✅ Database ready!")
+    print("\n✅ Database is ready and structure is verified!")
     
 except Exception as e:
-    print(f"❌ Connection failed: {e}")
+    print(f"❌ Verification failed: {e}")
+    print("\n💡 TIP: Make sure your credentials in config.py or .env are correct.")
