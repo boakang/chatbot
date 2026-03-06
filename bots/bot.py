@@ -6,7 +6,7 @@ from botbuilder.schema import ChannelAccount
 from database import DatabaseHelper
 
 
-class TicketBot(ActivityHandler):
+class Bot(ActivityHandler):
     def __init__(self, conversation_state: ConversationState, user_state: UserState):
         self.conversation_state = conversation_state
         self.user_state = user_state

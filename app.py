@@ -18,7 +18,7 @@ from botbuilder.core.integration import aiohttp_error_middleware
 from botbuilder.integration.aiohttp import CloudAdapter, ConfigurationBotFrameworkAuthentication
 from botbuilder.schema import Activity, ActivityTypes
 
-from bots import TicketBot
+from bots import Bot
 from config import DefaultConfig
  
 CONFIG = DefaultConfig()
@@ -64,7 +64,7 @@ CONVERSATION_STATE = ConversationState(MEMORY)
 USER_STATE = UserState(MEMORY)
 
 # Create the Bot
-BOT = TicketBot(CONVERSATION_STATE, USER_STATE)
+BOT = Bot(CONVERSATION_STATE, USER_STATE)
 
 
 # Listen for incoming requests on /api/messages
