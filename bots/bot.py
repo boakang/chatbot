@@ -21,102 +21,69 @@ class Bot(ActivityHandler):
     ):
         for member in members_added:
             if member.id != turn_context.activity.recipient.id:
-                await turn_context.send_activity(
-                    "🤖 Xin chào! Tôi là Automation Bot.\n\n"
-                    "Vui lòng cho biết role của bạn:\n"
-                    "- Gõ **Admin** nếu bạn là quản trị viên\n"
-                    "- Gõ **User** nếu bạn là nhân viên"
-                )
+                # Ngay khi user vào, hiển thị báo cáo tổng quát và menu
+                stats = self.db_helper.get_summary_stats()
+                message = "🤖 **XIN CHÀO! TÔI LÀ AUTOMATION BOT**\n\n"
+                message += "📊 **BÁO CÁO NHANH HÔM NAY:**\n"
+                message += f"- Tổng doanh thu: **${stats.get('total_revenue', 0):,.2f}**\n"
+                message += f"- Số chai đã bán: **{stats.get('total_bottles', 0):,}**\n"
+                message += f"- Tổng số cửa hàng: **{stats.get('total_stores', 0)}**\n\n"
+                
+                message += "🔍 **CÁC LỆNH HỖ TRỢ:**\n"
+                message += "1️⃣ Gõ **Top** để xem 5 sản phẩm bán chạy nhất\n"
+                message += "2️⃣ Gõ **Store [ID]** để xem doanh số cửa hàng (VD: Store 2501)\n"
+                message += "3️⃣ Gõ **City [Tên]** để xem doanh số thành phố (VD: City Ames)\n"
+                message += "4️⃣ Gõ **Help** để hiện lại menu này"
+                
+                await turn_context.send_activity(message)
 
     async def on_message_activity(self, turn_context: TurnContext):
-        # Lấy conversation data
-        conversation_data = await self.conversation_data_accessor.get(
-            turn_context, lambda: {}
-        )
-        
         user_input = turn_context.activity.text.strip()
+        user_input_lower = user_input.lower()
         
-        # ============ CHỌN ROLE ============
-        if not conversation_data.get("role"):
-            if user_input.lower() == "admin":
-                conversation_data["role"] = "admin"
-                conversation_data["step"] = "admin_menu"
-                
-                # Hiển thị thống kê nhanh cho Admin
-                stats = self.db_helper.get_summary_stats()
-                message = "📊 **BÁO CÁO TỔNG QUAN (ADMIN)**\n\n"
-                message += f"💰 Tổng doanh thu: **${stats.get('total_revenue', 0):,.2f}**\n"
-                message += f"🍾 Tổng số chai bán: **{stats.get('total_bottles', 0):,}**\n"
-                message += f"🏠 Số cửa hàng ghi nhận: **{stats.get('total_stores', 0)}**\n\n"
-                message += "Chọn chức năng:\n"
-                message += "- Gõ **Top** để xem Top 5 sản phẩm bán chạy\n"
-                message += "- Gõ **Exit** để thoát"
-                await turn_context.send_activity(message)
-                
-            elif user_input.lower() == "user":
-                conversation_data["role"] = "user"
-                conversation_data["step"] = "user_menu"
-                await turn_context.send_activity(
-                    "🔍 **HỆ THỐNG TRA CỨU DOANH SỐ RƯỢU IOWA**\n\n"
-                    "Dữ liệu sẵn sàng! Bạn có thể:\n"
-                    "1️⃣ Gõ **Store [ID]** để tra cứu theo cửa hàng (VD: Store 2501)\n"
-                    "2️⃣ Gõ **City [Tên]** để tra cứu theo thành phố (VD: City Ames)\n"
-                    "3️⃣ Gõ **Exit** để kết thúc"
-                )
-            else:
-                await turn_context.send_activity(
-                    "❌ Vui lòng chọn Role để tiếp tục:\n"
-                    "- **Admin** (Xem báo cáo tổng)\n"
-                    "- **User** (Tra cứu chi tiết)"
-                )
-        
-        # ============ ADMIN FLOW ============
-        elif conversation_data.get("role") == "admin":
-            user_input_lower = user_input.lower()
-            
-            if user_input_lower == "top":
-                products = self.db_helper.get_top_products()
-                message = "🏆 **TOP 5 SẢN PHẨM DOANH THU CAO NHẤT:**\n\n"
-                for i, p in enumerate(products, 1):
-                    message += f"{i}. {p['name']}: **${p['revenue']:,.2f}**\n"
-                await turn_context.send_activity(message)
-            
-            elif user_input_lower == "exit":
-                await turn_context.send_activity("👋 Đã thoát phiên Admin.")
-                conversation_data.clear()
-            else:
-                await turn_context.send_activity("Lệnh không hợp lệ. Gõ **Top** hoặc **Exit**.")
-        
-        # ============ USER FLOW ============
-        elif conversation_data.get("role") == "user":
-            user_input_lower = user_input.lower()
-            
-            # Tra cứu theo Store
-            if user_input_lower.startswith("store "):
+        # 1. Lệnh TOP
+        if user_input_lower == "top":
+            products = self.db_helper.get_top_products()
+            message = "🏆 **TOP 5 SẢN PHẨM DOANH THU CAO NHẤT:**\n\n"
+            for i, p in enumerate(products, 1):
+                message += f"{i}. {p['name']}: **${p['revenue']:,.2f}**\n"
+            await turn_context.send_activity(message)
+
+        # 2. Lệnh STORE
+        elif user_input_lower.startswith("store "):
+            try:
                 store_id = user_input.split()[1]
                 sales = self.db_helper.get_sales_by_store(store_id)
                 message = self._format_sales_results(sales, f"Cửa hàng #{store_id}")
                 await turn_context.send_activity(message)
-            
-            # Tra cứu theo City
-            elif user_input_lower.startswith("city "):
+            except IndexError:
+                await turn_context.send_activity("❌ Thiếu Store ID. VD: **Store 2501**")
+
+        # 3. Lệnh CITY
+        elif user_input_lower.startswith("city "):
+            try:
                 city_name = " ".join(user_input.split()[1:])
                 sales = self.db_helper.get_sales_by_city(city_name)
                 message = self._format_sales_results(sales, f"Thành phố {city_name}")
                 await turn_context.send_activity(message)
-            
-            elif user_input_lower == "exit":
-                await turn_context.send_activity("👋 Cảm ơn bạn đã sử dụng hệ thống tra cứu!")
-                conversation_data.clear()
-            else:
-                await turn_context.send_activity(
-                    "❌ Vui lòng gõ đúng định dạng:\n"
-                    "- **Store [ID]** (VD: Store 2501)\n"
-                    "- **City [Tên]** (VD: City Ames)\n"
-                    "- **Exit**"
-                )
+            except IndexError:
+                await turn_context.send_activity("❌ Thiếu tên thành phố. VD: **City Ames**")
+
+        # 4. Lệnh HELP
+        elif user_input_lower in ["help", "menu", "hello", "hi", "xin chào", "chào"]:
+            await self.on_members_added_activity(None, turn_context)
+
+        # 5. Xử lý các trường hợp khác
+        else:
+            await turn_context.send_activity(
+                "❓ Tôi không hiểu lệnh đó. Bạn có thể thử:\n"
+                "- **Top**\n"
+                "- **Store [ID]**\n"
+                "- **City [Tên]**\n"
+                "- **Help**"
+            )
         
-        # Lưu conversation state
+        # Lưu state
         await self.conversation_state.save_changes(turn_context)
         await self.user_state.save_changes(turn_context)
 
@@ -133,7 +100,7 @@ class Bot(ActivityHandler):
             message += f"💰 Doanh thu: **${s['revenue']:,.2f}**\n"
             if 'bottles' in s:
                 message += f"📦 Số chai: {s['bottles']}\n"
-            message += "---"
+            message += "---\n"
         return message
 
     async def on_turn(self, turn_context: TurnContext):
