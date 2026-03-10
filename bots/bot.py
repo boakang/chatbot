@@ -1,6 +1,7 @@
 # Copyright (c) Microsoft Corporation. All rights reserved.
 # Licensed under the MIT License.
 
+import calendar
 from botbuilder.core import ActivityHandler, TurnContext, ConversationState, UserState
 from botbuilder.schema import ChannelAccount
 from database import DatabaseHelper
@@ -16,13 +17,21 @@ STATE_TOP5              = "TOP5"               # kết quả top 5 bán nhiều
 STATE_BOTTOM5           = "BOTTOM5"            # kết quả top 5 bán ít
 
 
+MONTH_NAMES = {
+    1: "Tháng 1", 2: "Tháng 2", 3: "Tháng 3",
+    4: "Tháng 4", 5: "Tháng 5", 6: "Tháng 6",
+    7: "Tháng 7", 8: "Tháng 8", 9: "Tháng 9",
+    10: "Tháng 10", 11: "Tháng 11", 12: "Tháng 12",
+}
+
+
 def _fmt_date_range(from_date, to_date):
-    """Chuỗi mô tả khoảng thời gian"""
+    """Chuỗi mô tả khoảng thời gian (dạng YYYY-MM-DD)"""
     if from_date or to_date:
-        f = from_date or "đầu"
-        t = to_date or "nay"
+        f = from_date[:7] if from_date else "đầu năm"
+        t = to_date[:7] if to_date else "cuối năm"
         return f" (từ {f} đến {t})"
-    return " (toàn bộ thời gian)"
+    return " (toàn năm 2022)"
 
 
 class Bot(ActivityHandler):
@@ -49,8 +58,8 @@ class Bot(ActivityHandler):
         text = turn_context.activity.text.strip() if turn_context.activity.text else ""
         text_lower = text.lower()
 
-        # Lệnh reset về menu bất cứ lúc nào
-        if text_lower in ["menu", "help", "hello", "hi", "xin chào", "chào", "restart"]:
+        # Lệnh reset về menu — chỉ chấp nhận chính xác từ "Menu"
+        if text == "Menu":
             conv = await self.conv_accessor.get(turn_context, dict)
             conv.clear()
             conv["state"] = STATE_MAIN_MENU
@@ -77,25 +86,63 @@ class Bot(ActivityHandler):
                 conv["state"] = STATE_DATE_FROM
                 await self.conv_accessor.set(ctx, conv)
                 await ctx.send_activity(
-                    "📅 **Nhập ngày bắt đầu** (định dạng YYYY-MM-DD)\n"
-                    "hoặc gõ **skip** để bỏ qua bộ lọc ngày:"
+                    "📅 **Nhập tháng bắt đầu** (1–12)\n"
+                    "hoặc gõ **skip** để bỏ qua bộ lọc tháng:"
                 )
             else:
                 await ctx.send_activity(self._main_menu_message())
 
-        # ── NHẬP NGÀY BẮT ĐẦU ──
+        # ── NHẬP THÁNG BẮT ĐẦU ──
         elif state == STATE_DATE_FROM:
-            conv["from_date"] = None if text_lower == "skip" else text
-            conv["state"] = STATE_DATE_TO
-            await self.conv_accessor.set(ctx, conv)
-            await ctx.send_activity(
-                "📅 **Nhập ngày kết thúc** (định dạng YYYY-MM-DD)\n"
-                "hoặc gõ **skip** để bỏ qua:"
-            )
+            if text_lower == "skip":
+                conv["from_month"] = None
+                conv["state"] = STATE_DATE_TO
+                await self.conv_accessor.set(ctx, conv)
+                await ctx.send_activity(
+                    "📅 **Tháng kết thúc?** Nhập số tháng (1–12)\n"
+                    "hoặc gõ **skip** để lấy toàn bộ năm 2022:"
+                )
+            else:
+                try:
+                    m = int(text)
+                    if 1 <= m <= 12:
+                        conv["from_month"] = m
+                        conv["state"] = STATE_DATE_TO
+                        await self.conv_accessor.set(ctx, conv)
+                        await ctx.send_activity(
+                            f"📅 Từ **{MONTH_NAMES[m]}**. Bây giờ nhập **tháng kết thúc** (1–12)\n"
+                            "hoặc gõ **skip** để đến cuối năm:"
+                        )
+                    else:
+                        await ctx.send_activity("❌ Vui lòng nhập số tháng từ **1 đến 12**.")
+                except ValueError:
+                    await ctx.send_activity("❌ Vui lòng nhập **số** tháng (ví dụ: 3 cho Tháng 3).")
 
-        # ── NHẬP NGÀY KẾT THÚC ──
+        # ── NHẬP THÁNG KẾT THÚC ──
         elif state == STATE_DATE_TO:
-            conv["to_date"] = None if text_lower == "skip" else text
+            if text_lower == "skip":
+                conv["to_month"] = None
+            else:
+                try:
+                    m = int(text)
+                    if 1 <= m <= 12:
+                        conv["to_month"] = m
+                    else:
+                        await ctx.send_activity("❌ Vui lòng nhập số tháng từ **1 đến 12**.")
+                        return
+                except ValueError:
+                    await ctx.send_activity("❌ Vui lòng nhập **số** tháng (ví dụ: 6 cho Tháng 6).")
+                    return
+
+            # Chuyển tháng → date string
+            from_m = conv.get("from_month")
+            to_m = conv.get("to_month")
+            conv["from_date"] = f"2022-{from_m:02d}-01" if from_m else None
+            if to_m:
+                last_day = calendar.monthrange(2022, to_m)[1]
+                conv["to_date"] = f"2022-{to_m:02d}-{last_day:02d}"
+            else:
+                conv["to_date"] = None
             await self.conv_accessor.set(ctx, conv)
 
             choice = conv.get("menu_choice")
@@ -318,12 +365,14 @@ class Bot(ActivityHandler):
 
     def _main_menu_message(self) -> str:
         msg  = "🤖 **XIN CHÀO! TÔI LÀ AUTOMATION BOT**\n\n"
-        msg += "📋 **CHỌN CHỨC NĂNG:**\n\n"
-        msg += "1️⃣  **Doanh thu** — Xem doanh thu theo County / City / Cửa hàng\n"
-        msg += "2️⃣  **Top 5 rượu bán nhiều nhất**\n"
+        msg += "� _Báo cáo doanh thu bán rượu khu vực Iowa 2022_\n\n"
+        msg += "---\n\n"
+        msg += "**CHỌN CHỨC NĂNG:**\n\n"
+        msg += "1️⃣  **Doanh thu** — Xem doanh thu theo County / City / Cửa hàng\n\n"
+        msg += "2️⃣  **Top 5 rượu bán nhiều nhất**\n\n"
         msg += "3️⃣  **Top 5 rượu bán ít nhất**\n\n"
-        msg += "👉 Nhập **1**, **2** hoặc **3** để bắt đầu.\n"
-        msg += "_(Mỗi lựa chọn đều có thể lọc theo khoảng thời gian)_"
+        msg += "👉 Nhập **1**, **2** hoặc **3** để bắt đầu.\n\n"
+        msg += "_(Mỗi lựa chọn đều có thể lọc theo tháng trong năm 2022)_"
         return msg
 
     def _retype_hint(self, items: list, with_exit: bool = False) -> str:
