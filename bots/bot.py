@@ -13,8 +13,7 @@ STATE_DATE_TO           = "DATE_TO"            # chờ nhập ngày kết thúc
 STATE_COUNTY_LIST       = "COUNTY_LIST"        # hiện list county
 STATE_CITY_LIST         = "CITY_LIST"          # hiện list city của county đã chọn
 STATE_STORE_LIST        = "STORE_LIST"         # hiện list store của city đã chọn
-STATE_TOP5              = "TOP5"               # kết quả top 5 bán nhiều
-STATE_BOTTOM5           = "BOTTOM5"            # kết quả top 5 bán ít
+STATE_END_RESULT        = "END_RESULT"         # hiện kết quả cuối cùng, chờ gõ Menu
 
 
 MONTH_NAMES = {
@@ -202,9 +201,9 @@ class Bot(ActivityHandler):
             except ValueError:
                 await ctx.send_activity("❌ Vui lòng nhập **số thứ tự** của cửa hàng.")
 
-        # ── KẾT QUẢ CUỐI (TOP / BOTTOM) ──
-        elif state in [STATE_TOP5, STATE_BOTTOM5]:
-            await ctx.send_activity("👉 Gõ **Menu** để quay lại menu chính.")
+        # ── KẾT QUẢ CUỐI CÙNG ──
+        elif state == STATE_END_RESULT:
+            await ctx.send_activity("👉 Gõ **menu** (hoặc **Menu**) để quay lại menu chính.")
 
         else:
             await ctx.send_activity("👉 Gõ **Menu** để quay lại menu chính.")
@@ -247,11 +246,11 @@ class Bot(ActivityHandler):
             return
 
         date_info = _fmt_date_range(from_date, to_date)
-        msg = f"🏙️ **THÀNH PHỐ TRONG COUNTY {county.upper()}**{date_info}\n\n"
+        msg = f"🏙️ **THÀNH PHỐ TRONG QUẬN (HẠT) {county.upper()}**{date_info}\n\n"
         msg += "Nhập **số thứ tự** để chọn thành phố:\n\n"
         for i, c in enumerate(cities, 1):
             msg += f"  {i}. {c}\n"
-        msg += "\n**0.** ⬅️ Xem doanh thu toàn bộ county (bỏ qua chọn city)"
+        msg += "\n**0.** ⬅️ Xem doanh thu toàn bộ Quận (hạt) (bỏ qua chọn thành phố)"
         await ctx.send_activity(msg)
 
     async def _show_store_list(self, ctx: TurnContext, conv: dict):
@@ -284,15 +283,14 @@ class Bot(ActivityHandler):
         if not data:
             await ctx.send_activity(f"❌ Không tìm thấy dữ liệu cho county **{county}**.")
         else:
-            msg = f"📊 **DOANH THU COUNTY {county.upper()}**{date_info}\n\n"
+            msg = f"📊 **DOANH THU QUẬN (HẠT) {county.upper()}**{date_info}\n\n"
             msg += f"💰 Tổng doanh thu: **${data['total_revenue']:,.2f}**\n"
             msg += f"📦 Số chai bán: **{data['total_bottles']:,}**\n"
             msg += f"🏪 Số cửa hàng: **{data['total_stores']}**\n\n"
             msg += "Gõ **Menu** để quay lại menu chính."
             await ctx.send_activity(msg)
 
-        conv.clear()
-        conv["state"] = STATE_MAIN_MENU
+        conv["state"] = STATE_END_RESULT
         await self.conv_accessor.set(ctx, conv)
 
     async def _show_store_revenue(self, ctx: TurnContext, conv: dict, store: dict):
@@ -311,8 +309,7 @@ class Bot(ActivityHandler):
             msg += "Gõ **Menu** để quay lại menu chính."
             await ctx.send_activity(msg)
 
-        conv.clear()
-        conv["state"] = STATE_MAIN_MENU
+        conv["state"] = STATE_END_RESULT
         await self.conv_accessor.set(ctx, conv)
 
     async def _show_top5(self, ctx: TurnContext, conv: dict):
@@ -332,7 +329,7 @@ class Bot(ActivityHandler):
             msg += "Gõ **Menu** để quay lại menu chính."
             await ctx.send_activity(msg)
 
-        conv["state"] = STATE_TOP5
+        conv["state"] = STATE_END_RESULT
         await self.conv_accessor.set(ctx, conv)
 
     async def _show_bottom5(self, ctx: TurnContext, conv: dict):
@@ -352,7 +349,7 @@ class Bot(ActivityHandler):
             msg += "Gõ **Menu** để quay lại menu chính."
             await ctx.send_activity(msg)
 
-        conv["state"] = STATE_BOTTOM5
+        conv["state"] = STATE_END_RESULT
         await self.conv_accessor.set(ctx, conv)
 
     # ─── UI HELPERS ───────────────────────────────────────────────────────────
