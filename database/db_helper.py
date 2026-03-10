@@ -202,7 +202,7 @@ class DatabaseHelper:
     def get_top_products(self, limit: int = 5,
                          from_date: Optional[str] = None,
                          to_date: Optional[str] = None) -> List[Dict]:
-        """Top N sản phẩm bán nhiều nhất (theo bottles_sold)"""
+        """Top N sản phẩm bán nhiều nhất (theo bottles_sold), nếu bằng số chai thì lọc doanh thu thấp -> cao"""
         try:
             conn = self.get_connection()
             cursor = conn.cursor()
@@ -220,7 +220,7 @@ class DatabaseHelper:
             if to_date:
                 query += " AND date <= ?"
                 params.append(to_date)
-            query += " GROUP BY product_name ORDER BY TotalBottles DESC"
+            query += " GROUP BY product_name ORDER BY TotalBottles DESC, TotalRevenue DESC"
             cursor.execute(query, params)
             products = []
             for row in cursor.fetchall():
@@ -238,7 +238,7 @@ class DatabaseHelper:
     def get_bottom_products(self, limit: int = 5,
                             from_date: Optional[str] = None,
                             to_date: Optional[str] = None) -> List[Dict]:
-        """Top N sản phẩm bán ít nhất (theo bottles_sold)"""
+        """Top N sản phẩm bán ít nhất (theo bottles_sold), nếu bằng số chai thì lọc doanh thu thấp -> cao"""
         try:
             conn = self.get_connection()
             cursor = conn.cursor()
@@ -256,7 +256,7 @@ class DatabaseHelper:
             if to_date:
                 query += " AND date <= ?"
                 params.append(to_date)
-            query += " GROUP BY product_name ORDER BY TotalBottles ASC"
+            query += " GROUP BY product_name ORDER BY TotalBottles ASC, TotalRevenue ASC"
             cursor.execute(query, params)
             products = []
             for row in cursor.fetchall():
