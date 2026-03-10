@@ -202,18 +202,12 @@ class Bot(ActivityHandler):
             except ValueError:
                 await ctx.send_activity("❌ Vui lòng nhập **số thứ tự** của cửa hàng.")
 
-        # ── KẾT QUẢ CUỐI (TOP / BOTTOM) → về menu ──
+        # ── KẾT QUẢ CUỐI (TOP / BOTTOM) ──
         elif state in [STATE_TOP5, STATE_BOTTOM5]:
-            conv.clear()
-            conv["state"] = STATE_MAIN_MENU
-            await self.conv_accessor.set(ctx, conv)
-            await ctx.send_activity(self._main_menu_message())
+            await ctx.send_activity("👉 Gõ **Menu** để quay lại menu chính.")
 
         else:
-            conv.clear()
-            conv["state"] = STATE_MAIN_MENU
-            await self.conv_accessor.set(ctx, conv)
-            await ctx.send_activity(self._main_menu_message())
+            await ctx.send_activity("👉 Gõ **Menu** để quay lại menu chính.")
 
     # ─── HELPER: SHOW SCREENS ─────────────────────────────────────────────────
 
@@ -364,11 +358,11 @@ class Bot(ActivityHandler):
     # ─── UI HELPERS ───────────────────────────────────────────────────────────
 
     def _main_menu_message(self) -> str:
-        msg  = "🤖 **XIN CHÀO! TÔI LÀ AUTOMATION BOT**\n\n"
-        msg += "� _Báo cáo doanh thu bán rượu khu vực Iowa 2022_\n\n"
+        msg  = "🤖 **XIN CHÀO! TÔI LÀ MENINBLACK BOT**\n\n"
+        msg += " _Báo cáo doanh thu bán rượu khu vực Iowa, Mỹ năm 2022_\n\n"
         msg += "---\n\n"
         msg += "**CHỌN CHỨC NĂNG:**\n\n"
-        msg += "1️⃣  **Doanh thu** — Xem doanh thu theo County / City / Cửa hàng\n\n"
+        msg += "1️⃣  **Doanh thu** — Xem doanh thu theo Quận (hạt) / Thành phố / Cửa hàng\n\n"
         msg += "2️⃣  **Top 5 rượu bán nhiều nhất**\n\n"
         msg += "3️⃣  **Top 5 rượu bán ít nhất**\n\n"
         msg += "👉 Nhập **1**, **2** hoặc **3** để bắt đầu.\n\n"
