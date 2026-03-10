@@ -58,8 +58,8 @@ class Bot(ActivityHandler):
         text = turn_context.activity.text.strip() if turn_context.activity.text else ""
         text_lower = text.lower()
 
-        # Lệnh reset về menu — chỉ chấp nhận chính xác từ "Menu"
-        if text == "Menu":
+        # Lệnh reset về menu — chấp nhận "menu" hoặc "Menu"
+        if text.lower() == "menu":
             conv = await self.conv_accessor.get(turn_context, dict)
             conv.clear()
             conv["state"] = STATE_MAIN_MENU
@@ -366,7 +366,7 @@ class Bot(ActivityHandler):
         msg += "2️⃣  **Top 5 rượu bán nhiều nhất**\n\n"
         msg += "3️⃣  **Top 5 rượu bán ít nhất**\n\n"
         msg += "👉 Nhập **1**, **2** hoặc **3** để bắt đầu.\n\n"
-        msg += "_(Mỗi lựa chọn đều có thể lọc theo tháng trong năm 2022)_"
+        msg += "_(Mỗi lựa chọn đều có thể lọc theo tháng)_"
         return msg
 
     def _retype_hint(self, items: list, with_exit: bool = False) -> str:
